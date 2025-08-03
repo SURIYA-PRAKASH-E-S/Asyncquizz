@@ -33,8 +33,8 @@ This app is built using both **frontend and backend technologies**:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/SURIYA-PRAKASH-E-S/AsyncQuiz.git
-cd AsyncQuiz
+git clone https://github.com/SURIYA-PRAKASH-E-S/Asyncquizz.git
+cd Asyncquizz
 
 ```
 
