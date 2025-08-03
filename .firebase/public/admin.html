@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <style>
+    body { background: #f9fafb; }
+    .dashboard-card { min-width: 180px; }
+    @media (max-width: 600px) {
+      .dashboard-card { min-width: 100%; margin-bottom: 1rem; }
+      .dashboard-row { flex-direction: column !important; }
+      .admin-header { flex-direction: column !important; gap: 0.5rem !important; }
+      .admin-header h1 { font-size: 1.5rem !important; }
+    }
+    .logout-btn { position: absolute; top: 20px; right: 30px; }
+    .btn-shadcn {
+      background: linear-gradient(90deg, #6366f1 0%, #0ea5e9 100%);
+      color: #fff;
+      border: none;
+      border-radius: 0.7rem;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .btn-shadcn:hover {
+      background: linear-gradient(90deg, #4f46e5 0%, #0369a1 100%);
+      color: #fff;
+    }
+    .admin-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .admin-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+    .admin-logo-icon {
+      width: 48px; height: 48px;
+      display: flex; align-items: center; justify-content: center;
+      background: #6366f1;
+      border-radius: 1rem;
+    }
+    .admin-login-btn {
+      font-weight: 500;
+      border-radius: 0.7rem;
+      padding: 0.5rem 1.2rem;
+      background: #fff;
+      color: #6366f1;
+      border: 2px solid #6366f1;
+      transition: background 0.2s, color 0.2s;
+    }
+    .admin-login-btn:hover {
+      background: #6366f1;
+      color: #fff;
+    }
+    /* Modal styles */
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(30,41,59,0.25);
+      z-index: 1040;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-content {
+      border-radius: 1.2rem;
+      box-shadow: 0 2px 32px #6366f1;
+      border: none;
+      min-width: 320px;
+      position: relative;
+      background: #fff;
+      animation: fadeIn 0.4s;
+    }
+    .modal-close {
+      position: absolute;
+      top: 0.7rem;
+      right: 1rem;
+      font-size: 1.5rem;
+      color: #64748b;
+      background: none;
+      border: none;
+      cursor: pointer;
+      z-index: 10;
+      transition: color 0.2s;
+    }
+    .modal-close:hover { color: #ef4444; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div class="container mt-4 position-relative">
+    <!-- Header with logo, name, login/logout -->
+    <div class="admin-header mb-4">
+      <div class="admin-logo">
+        <div class="admin-logo-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32">
+            <circle cx="16" cy="16" r="16" fill="#fff"/>
+            <text x="16" y="20" text-anchor="middle" font-size="18" font-weight="bold" fill="#6366f1">A</text>
+            <text x="8" y="10" font-size="10" fill="#0ea5e9">+</text>
+            <text x="24" y="10" font-size="10" fill="#0ea5e9">×</text>
+          </svg>
+        </div>
+        <h1 class="mb-0" style="font-weight:700;color:#6366f1;font-size:2rem;">Async Quiz Admin</h1>
+      </div>
+      <button id="loginBtn" class="admin-login-btn" onclick="openAdminModal()">Login</button>
+      <button id="logoutBtn" class="btn btn-danger d-none" onclick="adminLogout()">Logout</button>
+    </div>
+
+    <!-- Admin Dashboard (hidden until login) -->
+    <div id="adminPanel" style="display:none;">
+      <div class="d-flex dashboard-row gap-3 mb-4 flex-wrap">
+        <div class="card dashboard-card text-center shadow">
+          <div class="card-body">
+            <h5 class="card-title">Participants</h5>
+            <p class="card-text fs-2" id="participantsCount">0</p>
+          </div>
+        </div>
+        <div class="card dashboard-card text-center shadow">
+          <div class="card-body">
+            <h5 class="card-title">Questions</h5>
+            <p class="card-text fs-2" id="questionsCount">0</p>
+          </div>
+        </div>
+      </div>
+      <div class="card shadow mb-4">
+        <div class="card-body">
+          <h4 class="mb-3">Add Quiz Question</h4>
+          <form id="questionForm">
+            <div class="mb-2">
+              <label>Question</label>
+              <input type="text" id="question" class="form-control" required>
+            </div>
+            <div class="mb-2">
+              <label>Number of Options</label>
+              <select id="optionCount" class="form-select">
+                <option value="2">2</option>
+                <option value="4" selected>4</option>
+              </select>
+            </div>
+            <div class="mb-2 option-group" id="optionA">
+              <label>Option A</label>
+              <input type="text" id="a" class="form-control" required>
+            </div>
+            <div class="mb-2 option-group" id="optionB">
+              <label>Option B</label>
+              <input type="text" id="b" class="form-control" required>
+            </div>
+            <div class="mb-2 option-group" id="optionC">
+              <label>Option C</label>
+              <input type="text" id="c" class="form-control">
+            </div>
+            <div class="mb-2 option-group" id="optionD">
+              <label>Option D</label>
+              <input type="text" id="d" class="form-control">
+            </div>
+            <div class="mb-2">
+              <label>Correct Answer (a/b/c/d)</label>
+              <input type="text" id="correct" class="form-control" maxlength="1" required>
+            </div>
+            <button type="submit" class="btn btn-shadcn">Save Question</button>
+          </form>
+          <div id="message" class="mt-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Login Modal -->
+  <div id="adminLoginModal" class="modal-backdrop" style="display:none;">
+    <div class="modal-dialog" style="max-width:350px;">
+      <div class="modal-content p-4">
+        <button class="modal-close" onclick="closeAdminModal()" aria-label="Close">&times;</button>
+        <h5 class="mb-3 text-center" style="color:#6366f1;">Admin Login</h5>
+        <input type="email" id="adminEmail" class="form-control mb-2" placeholder="Email">
+        <input type="password" id="adminPass" class="form-control mb-2" placeholder="Password">
+        <button class="btn btn-shadcn w-100 mb-2" onclick="adminLogin()">Login</button>
+        <div id="adminLoginMsg" class="mt-2 text-danger text-center"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- --- Firebase config --- -->
+  <script src="firebase-config.js"></script>
+  <script>
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    const db = firebase.database();
+
+    // --- Admin Login Logic with Firebase Auth ---
+    function openAdminModal() {
+      document.getElementById("adminLoginModal").style.display = "flex";
+      document.getElementById("adminLoginMsg").innerText = "";
+      document.getElementById("adminEmail").value = "";
+      document.getElementById("adminPass").value = "";
+    }
+    function closeAdminModal() {
+      document.getElementById("adminLoginModal").style.display = "none";
+    }
+    function adminLogin() {
+      const email = document.getElementById("adminEmail").value.trim();
+      const pass = document.getElementById("adminPass").value;
+      firebase.auth().signInWithEmailAndPassword(email, pass)
+        .then((userCredential) => {
+          // Only allow specific admin email
+          if (email === "suriyaes04@gmail.com") { // <-- change to your admin email
+            localStorage.setItem("isAdmin", "true");
+            closeAdminModal();
+            document.getElementById("adminPanel").style.display = "block";
+            document.getElementById("logoutBtn").classList.remove("d-none");
+            document.getElementById("loginBtn").classList.add("d-none");
+            loadDashboard();
+          } else {
+            firebase.auth().signOut();
+            document.getElementById("adminLoginMsg").innerText = "Not authorized as admin!";
+          }
+        })
+        .catch((error) => {
+          document.getElementById("adminLoginMsg").innerText = "Login failed: " + error.message;
+        });
+    }
+    function adminLogout() {
+      firebase.auth().signOut().then(() => {
+        localStorage.removeItem("isAdmin");
+        document.getElementById("adminPanel").style.display = "none";
+        document.getElementById("logoutBtn").classList.add("d-none");
+        document.getElementById("loginBtn").classList.remove("d-none");
+        openAdminModal();
+      });
+    }
+    // On page load, show login if not admin
+    window.onload = function() {
+      document.getElementById("adminPanel").style.display = "none";
+      document.getElementById("logoutBtn").classList.add("d-none");
+      document.getElementById("loginBtn").classList.remove("d-none");
+      if (localStorage.getItem("isAdmin") === "true") {
+        document.getElementById("adminPanel").style.display = "block";
+        document.getElementById("logoutBtn").classList.remove("d-none");
+        document.getElementById("loginBtn").classList.add("d-none");
+        closeAdminModal();
+        loadDashboard();
+      } else {
+        openAdminModal();
+      }
+    }
+
+    // --- Dashboard Data ---
+    function loadDashboard() {
+      // Participants count
+      db.ref('participants').on('value', (snap) => {
+        const val = snap.val();
+        document.getElementById('participantsCount').innerText = val ? Object.keys(val).length : 0;
+      });
+      // Questions count
+      db.ref('questions').on('value', (snap) => {
+        const val = snap.val();
+        document.getElementById('questionsCount').innerText = val ? Object.keys(val).length : 0;
+      });
+    }
+
+    // --- Option count logic ---
+    document.getElementById('optionCount').addEventListener('change', function() {
+      const count = parseInt(this.value);
+      document.getElementById('optionC').style.display = count === 4 ? 'block' : 'none';
+      document.getElementById('optionD').style.display = count === 4 ? 'block' : 'none';
+      document.getElementById('c').required = count === 4;
+      document.getElementById('d').required = count === 4;
+    });
+    // Set initial state
+    document.getElementById('optionC').style.display = 'block';
+    document.getElementById('optionD').style.display = 'block';
+
+    // --- Save Question to Firebase ---
+    document.getElementById('questionForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const count = parseInt(document.getElementById('optionCount').value);
+      const q = {
+        question: document.getElementById('question').value,
+        options: {
+          a: document.getElementById('a').value,
+          b: document.getElementById('b').value,
+        },
+        correct: document.getElementById('correct').value.toLowerCase()
+      };
+      if (count === 4) {
+        q.options.c = document.getElementById('c').value;
+        q.options.d = document.getElementById('d').value;
+      }
+      db.ref('questions').push(q, function(error) {
+        if (error) {
+          document.getElementById('message').innerHTML = `<div class="alert alert-danger">Error saving question!</div>`;
+        } else {
+          document.getElementById('message').innerHTML = `<div class="alert alert-success">Question Saved!</div>`;
+        }
+      });
+      this.reset();
+      document.getElementById('optionCount').value = "4";
+      document.getElementById('optionC').style.display = 'block';
+      document.getElementById('optionD').style.display = 'block';
+    });
+  </script>
+</body>
+</html>
