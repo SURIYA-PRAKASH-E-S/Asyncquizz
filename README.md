@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 🧠 Async Quiz App
 
 A simple, interactive quiz web application with math riddle practice built using **HTML**, **CSS**, **JavaScript**, and **Bootstrap**. Designed for quick learning and responsive usability across devices.
